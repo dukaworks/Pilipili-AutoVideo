@@ -101,18 +101,15 @@ async def _submit_kling_i2v(
     with open(image_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
 
-    # 检测图片格式
-    ext = Path(image_path).suffix.lower()
-    mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
-    mime_type = mime_map.get(ext, "image/jpeg")
-    image_data_url = f"data:{mime_type};base64,{img_b64}"
+    # Kling API 要求纯 base64 字符串，不能带 data:image/xxx;base64, 前缀
+    # 官方文档："When using Base64, do NOT add any prefix like data:image/png;base64,"
 
     # 时长：Kling 支持 5/10 秒，选择最接近的
     duration = 5 if scene.duration <= 7 else 10
 
     payload = {
         "model_name": config.video_gen.kling.model or "kling-v3",
-        "image": image_data_url,
+        "image": img_b64,
         "prompt": scene.video_prompt,
         "negative_prompt": "blurry, low quality, distorted, deformed, ugly, bad anatomy",
         "cfg_scale": 0.5,
