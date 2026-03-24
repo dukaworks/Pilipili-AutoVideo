@@ -157,9 +157,10 @@ async def generate_keyframe(
     # 会话级黑名单：已失败的模型直接跳过，不再重试
     # -------------------------------------------------------
     FALLBACK_MODELS = [
-        config.image_gen.model,                    # config 配置的主模型
-        "models/gemini-2.5-flash-image",           # 备选：2.5 Flash 图像版
-        "models/gemini-3.1-flash-image-preview",   # 备选：3.1 Flash 图像预览版
+        config.image_gen.model,                        # config 配置的主模型
+        "models/gemini-2.5-flash-preview-image-generation",  # 备选：2.5 Flash 图像生成预览
+        "models/gemini-2.0-flash-preview-image-generation",  # 备选：2.0 Flash 图像生成预览
+        "gemini-2.0-flash-exp-image-generation",              # 备选：2.0 Flash 实验图像版
     ]
     # 去重保序
     seen: set[str] = set()
@@ -177,7 +178,7 @@ async def generate_keyframe(
         skipped = [m for m in model_list if m in _FAILED_MODELS]
         print(f"[ImageGen] Scene {scene.scene_id} 跳过黑名单模型: {skipped}")
 
-    IMAGE_GEN_TIMEOUT = 120  # 秒，超时后自动切换下一个模型
+    IMAGE_GEN_TIMEOUT = 60  # 秒，超时后自动切换下一个模型
 
     last_err = None
     response = None
@@ -204,6 +205,12 @@ async def generate_keyframe(
                     _mark_model_failed(model_name, f"超时 {IMAGE_GEN_TIMEOUT}s", verbose)
                     last_err = TimeoutError(f"模型 {model_name} 超时")
                     response = None
+                    if verbose:
+                        remaining = [m for m in available_models if m not in _FAILED_MODELS]
+                        if remaining:
+                            print(f"[ImageGen] Scene {scene.scene_id} 切换到下一个模型: {remaining[0]}")
+                        else:
+                            print(f"[ImageGen] Scene {scene.scene_id} 所有模型均已失败")
                     continue
 
             break  # 成功则退出循环
