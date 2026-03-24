@@ -373,7 +373,7 @@ class TestJianyingDraft:
         edl_file = os.path.join(output_dir, "测试项目.edl")
         assert os.path.exists(edl_file)
 
-        json_file = os.path.join(output_dir, "测试项目_project.json")
+        json_file = os.path.join(output_dir, "测试项目_manifest.json")
         assert os.path.exists(json_file)
 
         with open(json_file, "r", encoding="utf-8") as f:
