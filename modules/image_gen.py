@@ -166,20 +166,35 @@ async def generate_keyframe(
     if response is None:
         raise RuntimeError(f"Scene {scene.scene_id} 所有图像模型均不可用: {last_err}")
 
-    # 提取图片数据
+    # 提取图片数据（防御性检查：candidates / content / parts 均可能为 None）
     image_saved = False
-    for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            img_data = part.inline_data.data
-            if isinstance(img_data, str):
-                img_data = base64.b64decode(img_data)
-            with open(output_path, "wb") as f:
-                f.write(img_data)
-            image_saved = True
+    candidates = response.candidates if response.candidates else []
+    for candidate in candidates:
+        content = candidate.content if candidate else None
+        if content is None:
+            continue
+        parts = content.parts if content.parts else []
+        for part in parts:
+            if part.inline_data is not None:
+                img_data = part.inline_data.data
+                if isinstance(img_data, str):
+                    img_data = base64.b64decode(img_data)
+                with open(output_path, "wb") as f:
+                    f.write(img_data)
+                image_saved = True
+                break
+        if image_saved:
             break
 
     if not image_saved:
-        raise RuntimeError(f"Scene {scene.scene_id} 图片生成失败：API 未返回图片数据")
+        # 打印完整 response 结构便于调试
+        finish_reason = None
+        if candidates and candidates[0]:
+            finish_reason = getattr(candidates[0], 'finish_reason', None)
+        raise RuntimeError(
+            f"Scene {scene.scene_id} 图片生成失败：API 未返回图片数据 "
+            f"(finish_reason={finish_reason}, candidates={len(candidates)})"
+        )
 
     if verbose:
         print(f"[ImageGen] Scene {scene.scene_id} 关键帧已保存: {output_path}")
