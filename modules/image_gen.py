@@ -261,11 +261,24 @@ async def generate_keyframe(
 
     if not image_saved:
         finish_reason = None
+        text_response = ""
         if candidates and candidates[0]:
             finish_reason = getattr(candidates[0], 'finish_reason', None)
+            # 提取 API 返回的文本内容，帮助诊断拒绝原因
+            try:
+                content = candidates[0].content
+                if content and content.parts:
+                    for part in content.parts:
+                        if hasattr(part, 'text') and part.text:
+                            text_response += part.text
+            except Exception:
+                pass
+        if verbose and text_response:
+            print(f"[ImageGen] Scene {scene.scene_id} API 返回文本（未生成图片）: {text_response[:300]}")
         raise RuntimeError(
             f"Scene {scene.scene_id} 图片生成失败：API 未返回图片数据 "
-            f"(finish_reason={finish_reason}, candidates={len(candidates)})"
+            f"(finish_reason={finish_reason}, candidates={len(candidates)}) "
+            f"API返回文本: {text_response[:200] if text_response else '无'}"
         )
 
     if verbose:
