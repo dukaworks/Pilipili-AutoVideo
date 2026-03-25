@@ -295,12 +295,19 @@ async def _submit_kling_omni(
     # - multi_prompt 中每个分镜必须传 duration（字符串）
     # - 最多支持 6 个分镜
     num_scenes = len(scenes)
-    # 每个分镜固定 3s，5个分镜总时长 15s（kling-v3-omni 支持最长 15s）
-    scene_dur = 3
-    total_duration = num_scenes * scene_dur
-    # 限制在 3~15s 范围内
-    total_duration = max(3, min(15, total_duration))
+    # kling-v3-omni 支持最长 15s，每个分镜最少 3s
+    # 关键约束：multi_prompt 中各分镜 duration 之和必须严格等于顶层 duration
+    # 做法：先算出顶层 total_duration（限制在 3~15s），再均分给每个分镜
+    # 均分时用整数除法，余数加到最后一个分镜，确保严格相等
+    ideal_total = num_scenes * 3
+    total_duration = max(3, min(15, ideal_total))
     total_duration_str = str(total_duration)
+
+    # 将 total_duration 均分给 num_scenes 个分镜
+    base_dur = total_duration // num_scenes          # 每个分镜的基础时长（整数）
+    remainder = total_duration - base_dur * num_scenes  # 余数加到最后一个分镜
+    scene_durs = [base_dur] * num_scenes
+    scene_durs[-1] += remainder  # 最后一个分镜承接余数，保证总和严格相等
 
     multi_prompt = []
     for i, scene in enumerate(scenes):
@@ -318,7 +325,7 @@ async def _submit_kling_omni(
         multi_prompt.append({
             "index": i + 1,
             "prompt": prompt,
-            "duration": str(scene_dur),  # 必须传，字符串格式
+            "duration": str(scene_durs[i]),  # 必须传，字符串格式，且总和 == total_duration
         })
 
     payload = {
