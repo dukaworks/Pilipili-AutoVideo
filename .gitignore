@@ -51,3 +51,7 @@ htmlcov/
 
 # Docker
 *.pid
+
+# 项目开发文件
+development-docs/
+
