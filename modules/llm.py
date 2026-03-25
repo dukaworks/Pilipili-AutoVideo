@@ -125,6 +125,13 @@ SCRIPT_SYSTEM_PROMPT = """你是一位专业的短视频脚本策划师和分镜
   "total_duration": 预估总时长（秒，整数）,
   "characters": [
     {{
+      "character_id": 0,
+      "name": "旁白",
+      "description": "旁白讲述者，无具体外貌",
+      "appearance_prompt": "narrator, no specific appearance",
+      "gender": "female"
+    }},
+    {{
       "character_id": 1,
       "name": "角色名称（如男主角、女主角）",
       "description": "外貌描述（中文）",
@@ -167,8 +174,8 @@ SCRIPT_SYSTEM_PROMPT = """你是一位专业的短视频脚本策划师和分镜
 5. `transition` 可选値：crossfade / fade / wipe / cut / zoom
 6. `camera_motion` 可选値：static / pan_left / pan_right / zoom_in / zoom_out / tilt_up / tilt_down
 7. 第一幕要有强烈的视觉冲击力，最后一幕要有收尾感
-8. `characters` 列表：如果视频有固定人物，必须列出所有主要角色，并标注 `gender`（male/female）
-9. `speaker_id`：每个分镜必须标注说话人（对应 characters 的 character_id），纯旁白/无对话的分镜标注主要讲述者 ID
+8. `characters` 列表：**必须包含 character_id=0 的旁白角色**（固定，不可省略），其余人物角色从 character_id=1 开始编号
+9. `speaker_id`：**0=旁白（无对话的画面、旁白讲述类分镜）**，其他数字对应 characters 的 character_id（该角色在说话或是主角的分镜）
 10. `characters_in_scene`：本分镜出现的所有角色 ID 列表
 
 ## shot_mode 标注规则（重要）

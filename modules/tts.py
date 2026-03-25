@@ -185,6 +185,10 @@ DEFAULT_VOICE_BY_GENDER = {
     "female": "female-shaonv",  # 少女音色
 }
 
+# 旁白专用音色（speaker_id=0）
+# 使用成熟女声，与角色少女音区分开
+NARRATOR_VOICE = "female-chengshu"  # 旁白音色：成熟女声
+
 
 async def generate_all_voiceovers(
     scenes: list[Scene],
@@ -207,15 +211,22 @@ async def generate_all_voiceovers(
     """
     # 构建 character_id -> voice_id 映射
     char_voice_map: dict[int, str] = {}
+    # speaker_id=0 始终为旁白音色，不受 characters 列表影响
+    char_voice_map[0] = NARRATOR_VOICE
     if characters:
         for char in characters:
             cid = char.character_id if hasattr(char, 'character_id') else char.get('character_id')
+            if cid == 0:
+                # character_id=0 是旁白，始终使用 NARRATOR_VOICE
+                char_voice_map[0] = NARRATOR_VOICE
+                continue
             gender = (char.gender if hasattr(char, 'gender') else char.get('gender', 'female')) or 'female'
             char_voice_map[cid] = DEFAULT_VOICE_BY_GENDER.get(gender.lower(), "female-shaonv")
     if verbose:
         print(f"[TTS] char_voice_map: {char_voice_map}")
         for s in scenes:
-            print(f"[TTS] Scene {s.scene_id} speaker_id={s.speaker_id} -> voice={char_voice_map.get(s.speaker_id, voice_id or 'default')}")
+            resolved = char_voice_map.get(s.speaker_id, voice_id or 'default(config)')
+            print(f"[TTS] Scene {s.scene_id} speaker_id={s.speaker_id} -> voice={resolved}")
 
     semaphore = asyncio.Semaphore(max_concurrent)
     results = {}
