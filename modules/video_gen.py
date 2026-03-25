@@ -236,8 +236,6 @@ async def _submit_kling_omni(
     - 无需 negative_prompt / cfg_scale / resolution（Omni 接口不支持这些字段）
     - 不降级！Omni 失败直接抛异常
     """
-    import subprocess
-    import tempfile
     from PIL import Image as PILImage
 
     api_key = config.video_gen.kling.api_key
@@ -259,31 +257,19 @@ async def _submit_kling_omni(
             idx = len(image_list) + 1
             image_path_to_idx[kf_path] = idx
 
-            # 压缩图片到 1280x720，保存为 JPEG
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                tmp_path = tmp.name
-            try:
-                img = PILImage.open(kf_path)
-                img.thumbnail((1280, 720), PILImage.LANCZOS)
-                img.save(tmp_path, "JPEG", quality=85)
-                # 上传到公开 CDN
-                result_bytes = subprocess.check_output(
-                    ["manus-upload-file", tmp_path],
-                    stderr=subprocess.DEVNULL
-                )
-                result_text = result_bytes.decode()
-                # 解析 CDN URL
-                cdn_url = None
-                for line in result_text.splitlines():
-                    if "CDN URL:" in line:
-                        cdn_url = line.split("CDN URL:")[-1].strip()
-                        break
-                if not cdn_url:
-                    raise RuntimeError(f"图片上传失败，无法获取 CDN URL: {result_text[:200]}")
-                image_list.append({"image_url": cdn_url})
-            finally:
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+            # 压缩图片到 960x540，quality=75，确保 base64 后 < 500KB
+            # Kling Omni 支持直接传 base64，无需上传 CDN
+            import io
+            img = PILImage.open(kf_path)
+            img.thumbnail((960, 540), PILImage.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, "JPEG", quality=75)
+            # 如果还是太大，继续降质量
+            if buf.tell() > 400 * 1024:
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=55)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+            image_list.append({"image_base64": b64})
 
     # 构建 multi_prompt 列表（每个分镜一条）
     # Kling Omni 规则（基于官方文档）：
